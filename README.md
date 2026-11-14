@@ -15,6 +15,11 @@ It needs no new AI calls. It joins a git diff with data UnvibeCode already produ
 | Business Workflow Map (`business-workflows.html`) — workflow titles + implementation references with exact line ranges | Which workflows the diff touches |
 | Complete Repository Context (`connections.jsonl`, `chunks.jsonl`) — verified cross-file links | Blast radius (connected code not in the diff) and linked tests |
 
+Related: [FinanceFlash/unvibecode#683](https://github.com/FinanceFlash/unvibecode/issues/683)
+proposed PR business-impact analysis and noted that the current outputs cannot say which
+tests should run. This prototype implements the idea and derives linked tests from
+`connections.jsonl`.
+
 ## Key design choice: match by symbol, not by line
 
 Changed lines are mapped to the enclosing function or class (`Config.from_object`,
