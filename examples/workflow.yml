@@ -1,0 +1,16 @@
+# .github/workflows/unvibecode-brief.yml — add to any repository
+name: UnvibeCode PR Brief
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # base and head commits are needed for the diff
+      - uses: samar172/univibecode@main

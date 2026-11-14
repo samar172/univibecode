@@ -1,0 +1,56 @@
+name: UnvibeCode PR Brief
+description: Post one auto-updating comment per pull request listing the business workflows, connected code and tests a change touches.
+branding:
+  icon: compass
+  color: purple
+inputs:
+  results-path:
+    description: Folder with a cached `unvibecode review` result for the base branch.
+    default: unvibecode_results
+  python-version:
+    default: "3.12"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    # Re-use the review cached for the base commit; run a fresh review only on a cache miss.
+    - id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.results-path }}
+        key: unvibecode-review-${{ github.event.pull_request.base.sha }}
+        restore-keys: unvibecode-review-
+
+    - if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        python -m pip install --quiet --upgrade unvibecode
+        python -m unvibecode review --repository "$GITHUB_WORKSPACE" \
+          --output "${{ inputs.results-path }}" --no-open-browser
+
+    - id: brief
+      shell: bash
+      run: |
+        python "${{ github.action_path }}/unvibecode_brief.py" \
+          --repo "$GITHUB_WORKSPACE" --results "${{ inputs.results-path }}" \
+          --base "${{ github.event.pull_request.base.sha }}" \
+          --head "${{ github.event.pull_request.head.sha }}" \
+          --pr-url "${{ github.event.pull_request.html_url }}" > brief.md
+        { echo '<!-- unvibecode-pr-brief -->'; cat brief.md; } > comment.md
+
+    # Upsert: edit the existing brief instead of adding a new comment on every push.
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+             --jq '.[] | select(.body | startswith("<!-- unvibecode-pr-brief -->")) | .id' | head -n1)
+        if [ -n "$id" ]; then
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comment.md
+        else
+          gh pr comment "$PR" --body-file comment.md
+        fi
